@@ -38,3 +38,6 @@ BUNDLE_SUPPORT = {
     },
 }
 MAX = "3.9"
+
+# Redefined here because bundled wheels are removed in RPM build
+BUNDLE_SUPPORT = None
