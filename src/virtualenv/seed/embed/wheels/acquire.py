@@ -30,11 +30,12 @@ class WheelDownloadFail(ValueError):
         self.err = err.strip()
 
 
-def get_wheels(for_py_version, wheel_cache_dir, extra_search_dir, packages, app_data, download):
+def get_wheels(creator, wheel_cache_dir, extra_search_dir, packages, app_data, download):
+    for_py_version = creator.interpreter.version_release_str
     # not all wheels are compatible with all python versions, so we need to py version qualify it
     processed = copy(packages)
     # 1. acquire from bundle
-    acquire_from_bundle(processed, for_py_version, wheel_cache_dir)
+    acquire_from_bundle(processed, creator, wheel_cache_dir)
     # 2. acquire from extra search dir
     acquire_from_dir(processed, for_py_version, wheel_cache_dir, extra_search_dir)
     # 3. download from the internet
@@ -46,9 +47,9 @@ def get_wheels(for_py_version, wheel_cache_dir, extra_search_dir, packages, app_
     return {p: next(iter(ver_to_files))[1] for p, ver_to_files in wheels.items()}
 
 
-def acquire_from_bundle(packages, for_py_version, to_folder):
+def acquire_from_bundle(packages, creator, to_folder):
     for pkg, version in list(packages.items()):
-        bundle = get_bundled_wheel(pkg, for_py_version)
+        bundle = get_bundled_wheel(pkg, creator)
         if bundle is not None:
             pkg_version = bundle.stem.split("-")[1]
             exact_version_match = version == pkg_version
@@ -66,8 +67,8 @@ def acquire_from_bundle(packages, for_py_version, to_folder):
                         copy2(str(bundle), str(bundled_wheel_file))
 
 
-def get_bundled_wheel(package, version_release):
-    return BUNDLE_FOLDER / (BUNDLE_SUPPORT.get(version_release, {}) or BUNDLE_SUPPORT[MAX]).get(package)
+def get_bundled_wheel(package, creator):
+    return BUNDLE_FOLDER / (BUNDLE_SUPPORT.get(creator, {}) or BUNDLE_SUPPORT[MAX]).get(package)
 
 
 def acquire_from_dir(packages, for_py_version, to_folder, extra_search_dir):
@@ -156,7 +157,7 @@ def download_wheel(packages, for_py_version, to_folder, app_data):
     cmd.extend(to_download)
     # pip has no interface in python - must be a new sub-process
 
-    with pip_wheel_env_run("{}.{}".format(*sys.version_info[0:2]), app_data) as env:
+    with pip_wheel_env_run(sys.executable, app_data) as env:
         process = Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         out, err = process.communicate()
         if process.returncode != 0:
@@ -164,7 +165,7 @@ def download_wheel(packages, for_py_version, to_folder, app_data):
 
 
 @contextmanager
-def pip_wheel_env_run(version, app_data):
+def pip_wheel_env_run(creator, app_data):
     env = os.environ.copy()
     env.update(
         {
@@ -172,7 +173,8 @@ def pip_wheel_env_run(version, app_data):
             for k, v in {"PIP_USE_WHEEL": "1", "PIP_USER": "0", "PIP_NO_INPUT": "1"}.items()
         }
     )
-    with ensure_file_on_disk(get_bundled_wheel("pip", version), app_data) as pip_wheel_path:
+    print("Calling ge_bundled_wheel with", sys.executable, creator)
+    with ensure_file_on_disk(get_bundled_wheel("pip", creator), app_data) as pip_wheel_path:
         # put the bundled wheel onto the path, and use it to do the bootstrap operation
         env[str("PYTHONPATH")] = str(pip_wheel_path)
         yield env

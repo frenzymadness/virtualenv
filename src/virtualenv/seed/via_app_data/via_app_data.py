@@ -69,7 +69,7 @@ class FromAppData(BaseEmbed):
             def _get(package, version):
                 wheel_loader = partial(
                     get_wheels,
-                    creator.interpreter.version_release_str,
+                    creator,
                     wheels_to,
                     self.extra_search_dir,
                     {package: version},

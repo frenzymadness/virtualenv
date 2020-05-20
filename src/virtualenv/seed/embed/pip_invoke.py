@@ -23,8 +23,8 @@ class PipInvoke(BaseEmbed):
     def run(self, creator):
         if not self.enabled:
             return
-        with self.get_pip_install_cmd(creator.exe, creator.interpreter.version_release_str) as cmd:
-            with pip_wheel_env_run(creator.interpreter.version_release_str, self.app_data) as env:
+        with self.get_pip_install_cmd(creator) as cmd:
+            with pip_wheel_env_run(creator, self.app_data) as env:
                 logging.debug("pip seed by running: %s", LogCmd(cmd, env))
                 process = Popen(cmd, env=env)
                 process.communicate()
@@ -32,8 +32,8 @@ class PipInvoke(BaseEmbed):
             raise RuntimeError("failed seed with code {}".format(process.returncode))
 
     @contextmanager
-    def get_pip_install_cmd(self, exe, version):
-        cmd = [str(exe), "-m", "pip", "-q", "install", "--only-binary", ":all:"]
+    def get_pip_install_cmd(self, creator):
+        cmd = [str(creator.exe), "-m", "pip", "-q", "install", "--only-binary", ":all:"]
         if not self.download:
             cmd.append("--no-index")
         pkg_versions = self.package_version()
@@ -41,7 +41,7 @@ class PipInvoke(BaseEmbed):
             cmd.append("{}{}".format(key, "=={}".format(ver) if ver is not None else ""))
         with ExitStack() as stack:
             folders = set()
-            for context in (ensure_file_on_disk(get_bundled_wheel(p, version), self.app_data) for p in pkg_versions):
+            for context in (ensure_file_on_disk(get_bundled_wheel(p, creator), self.app_data) for p in pkg_versions):
                 folders.add(stack.enter_context(context).parent)
             for folder in folders:
                 cmd.extend(["--find-links", str(folder)])
