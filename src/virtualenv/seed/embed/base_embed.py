@@ -6,6 +6,7 @@ from six import add_metaclass
 
 from virtualenv.util.path import Path
 from virtualenv.util.six import ensure_str, ensure_text
+from virtualenv.util.path._system_wheels import get_system_wheels_paths
 
 from ..seeder import Seeder
 
@@ -101,3 +102,8 @@ class BaseEmbed(Seeder):
 
     def __repr__(self):
         return ensure_str(self.__unicode__())
+
+    def insert_system_wheels_paths(self, creator):
+        for index, path in enumerate(get_system_wheels_paths(creator.interpreter.executable)):
+            if path not in self.extra_search_dir:
+                self.extra_search_dir.insert(index, path)

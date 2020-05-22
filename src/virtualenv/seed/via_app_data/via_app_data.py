@@ -38,6 +38,7 @@ class FromAppData(BaseEmbed):
     def run(self, creator):
         if not self.enabled:
             return
+        self.insert_system_wheels_paths(creator)
         base_cache = self.base_cache / creator.interpreter.version_release_str
         with self._get_seed_wheels(creator, base_cache) as name_to_whl:
             pip_version = name_to_whl["pip"].stem.split("-")[1] if "pip" in name_to_whl else None
